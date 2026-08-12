@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SCRABBLE PRO | Complete Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+
+<!-- Firebase Core Utilities -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+body {
+    font-family: 'Quicksand', sans-serif;
+    background: #eef2f7;
+    background-image: linear-gradient(rgba(230, 126, 34, 0.05) 2px, transparent 0), linear-gradient(90deg, rgba(230, 126, 34, 0.05) 2px, transparent 0);
+    background-size: 25px 25px;
+    color: #2c3e50;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 10px;
+}
+
+.arcade-card {
+    width: 100%;
+    max-width: 520px;
+    background: #ffffff;
+    border: 4px solid #e67e22;
+    border-radius: 20px;
+    padding: 14px;
+    box-shadow: 0 10px 20px rgba(230, 126, 34, 0.15);
+    text-align: center;
+    position: relative;
+}
+
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 24px;
+    color: #e67e22;
+    text-transform: uppercase;
+}
+
+.icon-btn {
+    background: #ecf0f1;
+    border: none;
+    border-bottom: 3px solid #bdc3c7;
+    border-radius: 12px;
+    padding: 6px 12px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: 0.1s;
+}
+.icon-btn:active { transform: translateY(2px); border-bottom-width: 1px; }
+
+/* ROOM CODE BANNER DISPLAY */
+.room-code-banner {
+    background: #ffeaa7;
+    border: 2px dashed #f39c12;
+    color: #d35400;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.room-code-badge {
+    background: #e67e22;
+    color: #fff;
+    padding: 2px 10px;
+    border-radius: 8px;
+    letter-spacing: 2px;
+    font-size: 18px;
+}
+
+/* SCOREBOARD & TIMER DISPLAY */
+.scoreboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 6px;
+    background: #f7f9fc;
+    border: 2px dashed #bdc3c7;
+    border-radius: 12px;
+    padding: 8px;
+    margin-bottom: 10px;
+}
+.score-node {
+    background: #fff;
+    border-radius: 8px;
+    padding: 6px 4px;
+    border: 2px solid #ecf0f1;
+}
+.score-node.active-turn { border-color: #3498db; box-shadow: 0 0 8px rgba(52, 152, 219, 0.4); }
+.score-node p { font-size: 10px; color: #7f8c8d; font-weight: 700; text-transform: uppercase;}
+.score-node h3 { font-family: 'Fredoka', sans-serif; font-size: 18px; color: #2c3e50; }
+
+.timer-box {
+    background: #e74c3c;
+    color: #fff;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 14px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    display: inline-block;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+/* LOBBY SETUP DECK */
+.setup-box { display: flex; flex-direction: column; gap: 10px; max-width: 320px; margin: 20px auto; }
+.input-row { display: flex; gap: 8px; }
+input[type="text"], select {
+    background: #fcfcfc; border: 3px solid #bdc3c7; padding: 10px;
+    border-radius: 12px; color: #2c3e50; font-size: 15px; font-family: 'Fredoka', sans-serif;
+    text-align: center; outline: none; width: 100%;
+}
+input:focus, select:focus { border-color: #e67e22; background: #fff; }
+
+button {
+    font-family: 'Fredoka', sans-serif; background: #e67e22; border: none;
+    border-bottom: 4px solid #d35400; border-radius: 12px; padding: 12px; 
+    color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; transition: 0.1s;
+    text-transform: uppercase;
+}
+button:active { transform: translateY(2px); border-bottom-width: 2px; }
+.alt-btn { background: #3498db; border-bottom: 4px solid #2980b9; }
+.ai-btn { background: #9b59b6; border-bottom: 4px solid #8e44ad; }
+.danger-btn { background: #e74c3c; border-bottom: 4px solid #c0392b; }
+
+/* 15x15 BOARD SCROLLABLE WRAPPER */
+.board-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    border: 3px solid #2c3e50;
+    background: #2c3e50;
+}
+
+.board-grid {
+    display: grid;
+    grid-template-columns: repeat(15, 26px);
+    grid-template-rows: repeat(15, 26px);
+    gap: 2px;
+    padding: 4px;
+    width: max-content;
+    margin: 0 auto;
+}
+
+.cell {
+    width: 26px; height: 26px;
+    background: #ecf0f1; border-radius: 3px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    font-family: 'Fredoka', sans-serif; font-size: 7px; font-weight: 700;
+    color: #7f8c8d; cursor: pointer; position: relative;
+}
+.cell.tws { background: #ff7675; color: #fff; } 
+.cell.dws { background: #fd79a8; color: #fff; } 
+.cell.tls { background: #0984e3; color: #fff; } 
+.cell.dls { background: #74b9ff; color: #fff; } 
+.cell.center { background: #ffeaa7; color: #d35400; font-size: 11px; }
+
+.cell .placed-tile {
+    width: 100%; height: 100%;
+    background: #f39c12; color: #fff;
+    border-radius: 3px; border-bottom: 2px solid #d35400;
+    display: flex; justify-content: center; align-items: center;
+    font-size: 13px; font-family: 'Fredoka', sans-serif; position: relative;
+}
+.cell .placed-tile .points { position: absolute; bottom: 1px; right: 1px; font-size: 6px; }
+.cell .placed-tile.temp { background: #e67e22; border-color: #2ecc71; }
+
+.rack-container {
+    display: flex; justify-content: center; gap: 4px;
+    background: #f8fafc; border: 2px solid #ecf0f1; border-radius: 12px;
+    padding: 6px; margin-bottom: 10px; min-height: 48px;
+}
+
+.rack-tile {
+    width: 38px; height: 38px;
+    background: #f39c12; color: #fff;
+    border-radius: 6px; border-bottom: 3px solid #d35400;
+    font-family: 'Fredoka', sans-serif; font-size: 16px; font-weight: 700;
+    display: flex; justify-content: center; align-items: center;
+    cursor: pointer; position: relative; transition: transform 0.1s;
+}
+.rack-tile .points { position: absolute; bottom: 1px; right: 2px; font-size: 8px; }
+.rack-tile.selected { transform: translateY(-5px); border-color: #2ecc71; box-shadow: 0 0 8px rgba(46, 204, 113, 0.6); }
+
+.action-row { display: flex; gap: 6px; width: 100%; }
+.action-row button { flex: 1; padding: 10px 4px; font-size: 12px; }
+
+.turn-banner {
+    text-align: center; margin-bottom: 8px; font-family: 'Fredoka', sans-serif;
+    font-size: 12px; font-weight: 700; color: #fff; padding: 6px; border-radius: 8px;
+}
+.my-turn { background: #3498db; }
+.waiting-turn { background: #bdc3c7; color: #7f8c8d; }
+
+/* MODAL OVERLAY SETUP FOR SETTINGS */
+.modal-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(44, 62, 80, 0.85);
+    border-radius: 16px;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    padding: 20px;
+}
+
+.modal-content {
+    background: #ffffff;
+    border: 4px solid #e67e22;
+    border-radius: 20px;
+    padding: 20px;
+    width: 100%;
+    max-width: 340px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    text-align: center;
+}
+
+.modal-content h2 {
+    font-family: 'Fredoka', sans-serif;
+    color: #e67e22;
+    margin-bottom: 15px;
+}
+
+.setting-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    font-weight: 700;
+    color: #34495e;
+}
+
+.game-box { display: none; }
+</style>
+</head>
+<body>
+
+<div class="arcade-card">
+    <div class="top-bar">
+        <h1>🔤 SCRABBLE PRO</h1>
+        <button class="icon-btn" onclick="openSettingsModal()">⚙️</button>
+    </div>
+
+    <!-- ROOM CODE DISPLAY BANNER -->
+    <div class="room-code-banner" id="roomCodeDisplay">
+        <span>SHARE ROOM PIN:</span>
+        <span class="room-code-badge" id="roomCodeText">----</span>
+    </div>
+
+    <!-- SCOREBOARD -->
+    <div class="scoreboard-grid" id="scoreboardView" style="display: none;"></div>
+    
+    <div class="timer-box" id="timerDisplay" style="display: none;">⏱️ Time Left: --s</div>
+
+    <!-- LOBBY SETUP DECK -->
+    <div id="lobbySection" class="setup-box">
+        <div class="input-row">
+            <select id="timerSelect">
+                <option value="60">60 Seconds Timer</option>
+                <option value="30">30 Seconds Blitz</option>
+                <option value="90">90 Seconds Timer</option>
+                <option value="0">Unlimited Time</option>
+            </select>
+        </div>
+        <button class="ai-btn" onclick="startAiGame()">🤖 Play vs AI (Offline)</button>
+        <div style="border-bottom:2px dashed #cbd5e1; margin:5px 0;"></div>
+        <div class="input-row">
+            <select id="maxPlayersSelect">
+                <option value="2">2 Players Match</option>
+                <option value="3">3 Players Match</option>
+                <option value="4">4 Players Match</option>
+            </select>
+        </div>
+        <button onclick="hostScrabbleSession()">Create Online Room</button>
+        <div style="color:#7f8c8d; font-size:12px; font-weight:700;">[ ENTER 4-DIGIT ROOM CODE ]</div>
+        <input type="text" id="sessionCodeInput" placeholder="0 0 0 0" maxlength="4">
+        <button class="alt-btn" onclick="joinScrabbleSession()">Join Online Room</button>
+    </div>
+
+    <!-- LIVE GAME BOARD VIEW -->
+    <div id="gameSection" class="game-box">
+        <div class="turn-banner waiting-turn" id="turnIndicator">INITIALIZING MATCH...</div>
+
+        <!-- 15x15 BOARD -->
+        <div class="board-wrapper">
+            <div class="board-grid" id="boardGrid"></div>
+        </div>
+
+        <!-- PLAYER TILE RACK -->
+        <div class="rack-container" id="playerRack"></div>
+
+        <!-- CONTROLLER ACTIONS -->
+        <div class="action-row">
+            <button class="alt-btn" onclick="clearUnsubmittedTiles()">Clear</button>
+            <button class="danger-btn" onclick="exchangeTilesAction()">Swap</button>
+            <button style="background:#f1c40f; border-bottom-color:#f39c12; color:#000;" onclick="passTurnAction()">Pass</button>
+            <button style="background:#2ecc71; border-bottom-color:#27ae60;" onclick="submitTurnMove()">Play 🚀</button>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL POPUP -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content">
+            <h2>⚙️ GAME SETTINGS</h2>
+            
+            <div class="setting-option">
+                <span>Sound FX:</span>
+                <select id="soundToggle" style="width: 110px; padding: 6px;" onchange="toggleSoundSetting()">
+                    <option value="on">ON 🔊</option>
+                    <option value="off">OFF 🔇</option>
+                </select>
+            </div>
+
+            <button class="alt-btn" style="width: 100%; margin-bottom: 10px;" onclick="toggleFullScreen()">Fullscreen 📱</button>
+            <button class="danger-btn" style="width: 100%; margin-bottom: 15px;" onclick="quitGameToLobby()">Quit to Lobby 🚪</button>
+            <button style="width: 100%;" onclick="closeSettingsModal()">Resume Game 🎮</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Firebase Config
+const firebaseConfig = {
+    apiKey: "AIzaSyCTkh1kds-rWEzrMGRWoK_uhgGUVoPkLZg",
+    authDomain: "dave-chat-1c7ac.firebaseapp.com",
+    databaseURL: "https://dave-chat-1c7ac-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+// Official Scrabble Tile Distribution & Point Values
+const officialDistribution = {
+    'A':{count:9, val:1}, 'B':{count:2, val:3}, 'C':{count:2, val:3}, 'D':{count:4, val:2},
+    'E':{count:12, val:1}, 'F':{count:2, val:4}, 'G':{count:3, val:2}, 'H':{count:2, val:4},
+    'I':{count:9, val:1}, 'J':{count:1, val:8}, 'K':{count:1, val:5}, 'L':{count:4, val:1},
+    'M':{count:2, val:3}, 'N':{count:6, val:1}, 'O':{count:8, val:1}, 'P':{count:2, val:3},
+    'Q':{count:1, val:10}, 'R':{count:6, val:1}, 'S':{count:4, val:1}, 'T':{count:6, val:1},
+    'U':{count:4, val:1}, 'V':{count:2, val:4}, 'W':{count:2, val:4}, 'X':{count:1, val:8},
+    'Y':{count:2, val:4}, 'Z':{count:1, val:10}, ' ':{count:2, val:0}
+};
+
+// Embedded Word Dictionary
+const DICTIONARY_WORDS = [
+    "AA","AB","AD","AE","AG","AH","AI","AL","AM","AN","AR","AS","AT","AW","AX","AY","BA","BE","BI","BO","BY","DE","DO","ED","EF","EH","EL","EM","EN","ER","ES","ET","EX","FA","FE","GO","HA","HE","HI","HO","IF","IN","IS","IT","JO","KA","LA","LI","LO","MA","ME","MI","MO","MU","MY","NA","NE","NO","NU","OD","OE","OF","OH","OI","OK","OM","ON","OP","OR","OS","OW","OX","OY","PA","PE","PI","PO","QI","RE","SH","SI","SO","TA","TE","TI","TO","UH","UM","UN","UP","US","UT","WE","WO","XI","XU","YA","YE","YO","ZA",
+    "ACT","ADD","AGE","AGO","AID","AIM","AIR","ALL","AND","ANT","ANY","APE","APT","ARC","ARM","ART","ASK","BAD","BAG","BAN","BAR","BAT","BAY","BED","BEE","BET","BIG","BIT","BOX","BOY","BUS","BUT","BUY","CAN","CAP","CAR","CAT","COW","CRY","CUT","DAY","DOG","DRY","EAR","EAT","EGG","END","EYE","FAN","FAR","FAT","FIT","FLY","FOR","FOX","FUN","GET","GOT","GUM","GUN","GUY","HAT","HEX","HIT","HOT","ICE","INK","JAM","JAR","JAW","JOB","JOY","KEY","KID","LAB","LAP","LAW","LEG","LET","LID","LIP","LOG","LOW","MAD","MAP","MAT","MAX","MIX","MUG","NET","NEW","NOT","NOW","NUT","OAK","ODD","OFF","OLD","ONE","OUT","OWL","OWN","PAD","PAN","PAY","PEN","PET","PIN","PIT","POP","POT","PUT","RAG","RAM","RAN","RAT","RED","RUN","SAD","SAT","SAW","SAY","SEE","SET","SEW","SUN","TAG","TAP","TAX","TEA","TEN","THE","TIE","TIN","TIP","TOE","TOP","TOY","TRY","TWO","USE","VAN","VET","WAR","WAY","WEB","WET","WIN","YES","YET","YOU","ZIP",
+    "ABLE","ACRE","AGED","ALSO","ARCH","AREA","ARMY","AUTO","BABY","BACK","BAKE","BALL","BAND","BANK","BARE","BARK","BARN","BASE","BEAR","BEAT","BELL","BEST","BIRD","BITE","BLUE","BOAT","BOLD","BONE","BOOK","BORN","BOTH","BOWL","BUSH","BUSY","CAKE","CALL","CALM","CAMP","CARD","CARE","CART","CASE","CASH","CAST","CAVE","CITY","CLAN","CLAY","CLUB","COAL","COAT","CODE","COLD","CONE","COOK","COOL","CORN","COST","DARK","DATA","DATE","DEAF","DEAL","DEAN","DEEP","DEER","DESK","DIET","DISK","DISH","DOCK","DOOR","DOSE","DROP","DUCK","DUST","DUTY","EACH","EARN","EAST","EASY","EDGE","EGGS","ELSE","EXIT","FACE","FACT","FAIR","FARM","FAST","FEAR","FEED","FEEL","FEET","FILE","FILL","FILM","FIND","FINE","FIRE","FIRM","FISH","FIST","FLAT","FLEA","FLOW","FOAM","FOOT","FORD","FORM","FORT","FREE","FROG","FULL","GAME","GIFT","GIRL","GIVE","GLAD","GOAT","GOLD","GOLF","GOOD","GROW","GUMM","HAIR","HALF","HALL","HAND","HARD","HARM","HATE","HAVE","HEAD","HEAL","HEAR","HEAT","HELP","HIGH","HILL","HOLD","HOLE","HOME","HOPE","HORN","HOST","HOUR","HUGE","HUNT","IRON","ITEM","JACK","JUMP","JUST","KEEP","KICK","KING","KITE","KNEE","KNOW","LADY","LAKE","LAMP","LAND","LANE","LAST","LATE","LEAF","LEAN","LEAP","LEFT","LEND","LIFT","LIKE","LINE","LINK","LION","LIST","LOCK","LONG","LOOK","LORD","LOVE","LUCK","MADE","MAIL","MAIN","MAKE","MALE","MANY","MAPS","MARK","MASS","MATH","MEAL","MEAT","MIND","MINE","MOON","MORE","MOST","MOVE","MUCH","MUST","NAME","NEAR","NEAT","NEST","NEWS","NICE","NIGHT","NINE","NODE","NOSE","NOTE","OPEN","PACK","PAGE","PAIN","PAIR","PARK","PART","PATH","PEAK","PLAN","PLAY","PLOT","POET","POOL","POOR","PORT","POST","PULL","PURE","PUSH","RACE","RAIN","RANK","RARE","RATE","READ","REAL","REST","RICE","RICH","RIDE","RING","RISE","RISK","ROAD","ROCK","ROOF","ROOM","ROOT","ROSE","RULE","SAFE","SAIL","SALT","SAME","SAND","SAVE","SEAT","SEED","SEEK","SELL","SEND","SHIP","SHOE","SHOP","SHOT","SHOW","SIDE","SIGN","SILK","SING","SINK","SITE","SIZE","SKIN","SLOW","SNOW","SOAP","SOFT","SOIL","SONG","SOON","SORT","SOUL","STAR","STAY","STEP","STOP","SURE","TALK","TALL","TANK","TAPE","TASK","TEAM","TEAR","TERM","TEST","TEXT","THAT","THIS","TIDE","TIED","TIME","TINY","TONE","TOOL","TOUR","TOWN","TREE","TRIP","TRUE","TUBE","TUNE","TURN","UNIT","UPON","USER","VAST","VIEW","WAIT","WALK","WALL","WANT","WARM","WASH","WAVE","WEAK","WEAR","WEST","WHAT","WIFE","WILD","WIND","WING","WIRE","WISE","WISH","WITH","WOOD","WORD","WORK","YARD","YEAR","ZERO","ZONE",
+    "ABOUT","ABOVE","ACTOR","ACUTE","ADAPT","ADMIT","ADOPT","ADULT","AFTER","AGAIN","AGREE","AHEAD","ALARM","ALBUM","ALERT","ALIEN","ALIGN","ALIKE","ALIVE","ALLOW","ALONE","ALONG","ALTER","AMONG","ANGEL","ANGER","ANGLE","ANGRY","APART","APPLE","APPLY","ARENA","ARGUE","ARISE","ARMED","ARRAY","ARROW","ASIDE","ASSET","AUDIO","AUDIT","AVOID","AWAKE","AWARD","AWARE","BADGE","BASIC","BASIN","BASIS","BEACH","BEARD","BEAST","BEGIN","BEING","BELOW","BENCH","BLACK","BLADE","BLAME","BLANK","BLAST","BLEED","BLEND","BLESS","BLIND","BLOCK","BLOOD","BLOOM","BLOWN","BOARD","BOAST","BOOST","BOUND","BRAIN","BRAKE","BRAND","BREAD","BREAK","BREED","BRICK","BRIDE","BRIEF","BRING","BROAD","BROWN","BRUSH","BUILD","BUILT","BUNCH","BUYER","CABLE","CANDY","CABIN","CANAL","CANDLE","CANON","CAPITAL","CAPTAIN","CARDS","CARRY","CARVE","CATCH","CAUSE","CHAIN","CHAIR","CHALK","CHARM","CHART","CHASE","CHEAP","CHECK","CHEEK","CHEEP","CHEER","CHESS","CHEST","CHIEF","CHILD","CHORD","CIVIL","CLAIM","CLASS","CLEAN","CLEAR","CLERK","CLICK","CLIFF","CLIMB","CLOCK","CLOSE","CLOTH","CLOUD","CLOWN","COACH","COAST","COLOR","COUNT","COURT","COVER","CRAFT","CRANE","CRASH","CRAZY","CREAM","CREEP","CROWD","CROWN","CRUDE","CRUEL","CRUSH","CRYSTAL","CYCLE","DAILY","DANCE","DEATH","DELAY","DEPTH","DEVIL","DIRTY","DOUBT","DRAFT","DRAIN","DRAMA","DRAWN","DREAM","DRESS","DRIVE","EAGER","EARLY","EARTH","EIGHT","ELECT","EMPTY","ENEMY","ENJOY","ENTER","EQUAL","ERROR","EVENT","EVERY","EXACT","EXIST","EXTRA","FAITH","FALSE","FANCY","FAULT","FAVOR","FIBER","FIELD","FIFTH","FIFTY","FIGHT","FINAL","FIRST","FLAME","FLASH","FLEET","FLOAT","FLOOD","FLOOR","FLOUR","FLUID","FOCUS","FORCE","FORTH","FORTY","FORUM","FOUND","FRAME","FRAUD","FRESH","FRONT","FRUIT","GIANT","GIVEN","GLASS","GLOBE","GLORY","GRADE","GRAND","GRANT","GRASS","GRAVE","GREAT","GREEN","GREET","GRIEF","GROSS","GROUP","GUARD","GUESS","GUEST","GUIDE","HAPPY","HEAVY","HELLO","HONOR","HORSE","HOTEL","HOUSE","HUMAN","IDEAL","IMAGE","INDEX","INNER","INPUT","ISSUE","JAPAN","JOINT","JUDGE","JUICE","KNIFE","KNOCK","LABEL","LABOR","LARGE","LATER","LAUGH","LAYER","LEARN","LEASE","LEAST","LEMON","LEVEL","LIGHT","LIMIT","LOGIC","LUCKY","LUNCH","MAGIC","MAJOR","MAKER","MARCH","MATCH","MAYOR","MEDIA","MIGHT","MINOR","MODEL","MONEY","MONTH","MOTOR","MOUNT","MOUSE","MOUTH","MUSIC","NAKED","NERVE","NIGHT","NOBLE","NOISE","NORTH","NOVEL","NURSE","OCEAN","OFFER","OFTEN","ORDER","OTHER","OUTER","OWNER","PANEL","PAPER","PARTY","PEACE","PHASE","PHONE","PIECE","PILOT","PITCH","PLACE","PLAIN","PLANE","PLANT","PLATE","POINT","POUND","POWER","PRESS","PRICE","PRIDE","PRIME","PRIZE","PROOF","PROUD","PROVE","QUEEN","QUICK","QUIET","QUITE","RADIO","RAISE","RANGE","RAPID","RATIO","REACH","READY","REFER","RIGHT","RIVAL","RIVER","ROBIN","ROBOT","ROUGH","ROUND","ROUTE","ROYAL","RULER","SCALE","SCENE","SCOPE","SCORE","SENSE","SERVE","SEVEN","SHAPE","SHARE","SHARP","SHEET","SHELF","SHELL","SHIFT","SHIRT","SHOCK","SHOOT","SHORT","SHOUT","SIGHT","SIGNAL","SILENT","SILVER","SIMPLE","SINCE","SKILL","SLATE","SLEEP","SLICE","SLIDE","SMALL","SMART","SMILE","SMOKE","SOLID","SOLVE","SORRY","SOUND","SOUTH","SPACE","SPARE","SPEAK","SPEED","SPEND","SPITE","SPLIT","SPOKE","SPORT","STAFF","STAGE","STAND","START","STATE","STEAM","STEEL","STICK","STILL","STOCK","STONE","STORE","STORM","STORY","STRIP","STUDY","STYLE","SUGAR","SUITE","SUPER","TABLE","TASTE","TEACH","THANK","THEIR","THEME","THERE","THESE","THICK","THING","THINK","THIRD","THOSE","THREE","THROW","TIGHT","TITLE","TODAY","TOPIC","TOTAL","TOUCH","TOWER","TRACK","TRADE","TRAIN","TREAT","TREND","TRIAL","TRUCK","TRULY","TRUST","TRUTH","TWICE","UNCLE","UNDER","UNION","UNIT","UNTIL","UPPER","URBAN","VALUE","VIDEO","VIRUS","VISIT","VITAL","VOICE","WASTE","WATCH","WHEEL","WHERE","WHICH","WHITE","WHOLE","WOMAN","WORLD","WORRY","YOUTH"
+];
+const DICTIONARY_SET = new Set(DICTIONARY_WORDS);
+
+// 15x15 Multipliers Layout
+const boardMultipliers = Array(15).fill(null).map(() => Array(15).fill(''));
+const TWS = [[0,0],[0,7],[0,14],[7,0],[7,14],[14,0],[14,7],[14,14]];
+const DWS = [[1,1],[2,2],[3,3],[4,4],[1,13],[2,12],[3,11],[4,10],[13,1],[12,2],[11,3],[10,4],[13,13],[12,12],[11,11],[10,10],[7,7]];
+const TLS = [[1,5],[1,9],[5,1],[5,5],[5,9],[5,13],[9,1],[9,5],[9,9],[9,13],[13,5],[13,9]];
+const DLS = [[0,3],[0,11],[2,6],[2,8],[3,0],[3,7],[3,14],[6,2],[6,6],[6,8],[6,12],[7,3],[7,11],[8,2],[8,6],[8,8],[8,12],[11,0],[11,7],[11,14],[12,6],[12,8],[14,3],[14,11]];
+
+TWS.forEach(([r,c]) => boardMultipliers[r][c] = 'TWS');
+DWS.forEach(([r,c]) => boardMultipliers[r][c] = 'DWS');
+TLS.forEach(([r,c]) => boardMultipliers[r][c] = 'TLS');
+DLS.forEach(([r,c]) => boardMultipliers[r][c] = 'DLS');
+
+let sessionRef = null;
+let roomCode = null;
+let myPlayerIndex = 0;
+let maxPlayers = 2;
+let currentTurnIndex = 0;
+let myRack = [];
+let selectedRackIndex = null;
+let pendingMoves = []; 
+let boardState = Array(15).fill(null).map(() => Array(15).fill(null));
+
+let isAiGame = false;
+let aiRack = [];
+
+// SETTINGS & TIMER CONTROLS
+let isSoundMuted = false;
+let turnTimerInterval = null;
+let timeRemaining = 0;
+let maxTurnTime = 60;
+
+// Audio Synth Feedback
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTone(freq, type, duration) {
+    if (isSoundMuted) return;
+    try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    } catch(e) {}
+}
+
+// SETTINGS MODAL FUNCTIONS
+function openSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'flex';
+}
+function closeSettingsModal() {
+    document.getElementById('settingsModal').style.display = 'none';
+}
+function toggleSoundSetting() {
+    const val = document.getElementById('soundToggle').value;
+    isSoundMuted = val === 'off';
+}
+function toggleFullScreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+    }
+}
+function quitGameToLobby() {
+    clearInterval(turnTimerInterval);
+    if (sessionRef) sessionRef.off();
+
+    clearUnsubmittedTiles();
+    boardState = Array(15).fill(null).map(() => Array(15).fill(null));
+    pendingMoves = [];
+    myRack = [];
+
+    document.getElementById('roomCodeDisplay').style.display = 'none';
+    document.getElementById('scoreboardView').style.display = 'none';
+    document.getElementById('timerDisplay').style.display = 'none';
+    document.getElementById('gameSection').style.display = 'none';
+    document.getElementById('lobbySection').style.display = 'flex';
+
+    closeSettingsModal();
+}
+
+function startTurnTimer() {
+    clearInterval(turnTimerInterval);
+    if (maxTurnTime <= 0) {
+        document.getElementById('timerDisplay').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('timerDisplay').style.display = 'inline-block';
+    timeRemaining = maxTurnTime;
+    document.getElementById('timerDisplay').innerText = `⏱️ Time Left: ${timeRemaining}s`;
+
+    turnTimerInterval = setInterval(() => {
+        timeRemaining--;
+        document.getElementById('timerDisplay').innerText = `⏱️ Time Left: ${timeRemaining}s`;
+
+        if (timeRemaining <= 0) {
+            clearInterval(turnTimerInterval);
+            playTone(200, 'sawtooth', 0.3);
+            alert("⏰ Time's up! Passing turn.");
+            passTurnAction();
+        }
+    }, 1000);
+}
+
+function generateInitialBag() {
+    let bag = [];
+    for (let char in officialDistribution) {
+        for (let i = 0; i < officialDistribution[char].count; i++) bag.push(char);
+    }
+    return bag.sort(() => Math.random() - 0.5);
+}
+
+function renderBoardUI() {
+    const grid = document.getElementById('boardGrid');
+    grid.innerHTML = '';
+    
+    for(let r=0; r<15; r++) {
+        for(let c=0; c<15; c++) {
+            const cell = document.createElement('div');
+            const mult = boardMultipliers[r][c];
+            cell.className = `cell ${mult.toLowerCase()}`;
+            if(r===7 && c===7 && !mult) cell.className += ' center';
+            
+            const existing = boardState[r][c];
+            const pending = pendingMoves.find(m => m.r === r && m.c === c);
+
+            if (existing || pending) {
+                const tileObj = existing || pending;
+                const displayChar = tileObj.letter;
+                const points = tileObj.isBlank ? 0 : officialDistribution[displayChar]?.val || 0;
+                
+                cell.innerHTML = `
+                    <div class="placed-tile ${pending ? 'temp' : ''}">
+                        ${displayChar}
+                        <span class="points">${points}</span>
+                    </div>`;
+            } else {
+                if(r===7 && c===7) cell.innerText = '★';
+                else cell.innerText = mult;
+            }
+
+            cell.onclick = () => handleCellClick(r, c);
+            grid.appendChild(cell);
+        }
+    }
+}
+
+function renderRackUI() {
+    const rack = document.getElementById('playerRack');
+    rack.innerHTML = '';
+    
+    myRack.forEach((char, idx) => {
+        const tile = document.createElement('div');
+        tile.className = `rack-tile ${selectedRackIndex === idx ? 'selected' : ''}`;
+        const points = officialDistribution[char]?.val || 0;
+        tile.innerHTML = `${char === ' ' ? '★' : char}<span class="points">${points}</span>`;
+        tile.onclick = () => {
+            playTone(480, 'sine', 0.05);
+            selectedRackIndex = selectedRackIndex === idx ? null : idx;
+            renderRackUI();
+        };
+        rack.appendChild(tile);
+    });
+}
+
+function handleCellClick(r, c) {
+    if (currentTurnIndex !== myPlayerIndex) return;
+    if (boardState[r][c] !== null) return;
+
+    const pendingIdx = pendingMoves.findIndex(m => m.r === r && m.c === c);
+    if (pendingIdx !== -1) {
+        const removed = pendingMoves.splice(pendingIdx, 1)[0];
+        myRack.push(removed.originalChar || removed.letter);
+        playTone(350, 'sine', 0.05);
+        renderRackUI(); renderBoardUI();
+        return;
+    }
+
+    if (selectedRackIndex !== null) {
+        const char = myRack.splice(selectedRackIndex, 1)[0];
+        let assignedLetter = char;
+        let isBlank = false;
+
+        if (char === ' ') {
+            isBlank = true;
+            let chosen = prompt("Enter a letter (A-Z) for this blank tile:") || 'A';
+            assignedLetter = chosen.trim().toUpperCase()[0] || 'A';
+        }
+
+        pendingMoves.push({ r, c, letter: assignedLetter, isBlank: isBlank, originalChar: char });
+        selectedRackIndex = null;
+        playTone(600, 'triangle', 0.08);
+        renderRackUI(); renderBoardUI();
+    }
+}
+
+function clearUnsubmittedTiles() {
+    pendingMoves.forEach(m => myRack.push(m.originalChar || m.letter));
+    pendingMoves = [];
+    selectedRackIndex = null;
+    playTone(250, 'sawtooth', 0.1);
+    renderRackUI(); renderBoardUI();
+}
+
+function extractFormedWords() {
+    let tempBoard = Array(15).fill(null).map((_, r) => 
+        Array(15).fill(null).map((_, c) => boardState[r][c] || pendingMoves.find(m => m.r === r && m.c === c) || null)
+    );
+
+    let words = [];
+    const rows = new Set(pendingMoves.map(m => m.r));
+    const cols = new Set(pendingMoves.map(m => m.c));
+    let isHorizontal = rows.size === 1;
+
+    if (isHorizontal) {
+        let r = pendingMoves[0].r;
+        let minC = Math.min(...pendingMoves.map(m => m.c));
+        let maxC = Math.max(...pendingMoves.map(m => m.c));
+
+        while (minC > 0 && tempBoard[r][minC - 1]) minC--;
+        while (maxC < 14 && tempBoard[r][maxC + 1]) maxC++;
+
+        if (maxC - minC > 0) {
+            let str = "";
+            for (let c = minC; c <= maxC; c++) str += tempBoard[r][c].letter;
+            words.push(str);
+        }
+    } else {
+        let c = pendingMoves[0].c;
+        let minR = Math.min(...pendingMoves.map(m => m.r));
+        let maxR = Math.max(...pendingMoves.map(m => m.r));
+
+        while (minR > 0 && tempBoard[minR - 1][c]) minR--;
+        while (maxR < 14 && tempBoard[maxR + 1][c]) maxR++;
+
+        if (maxR - minR > 0) {
+            let str = "";
+            for (let r = minR; r <= maxR; r++) str += tempBoard[r][c].letter;
+            words.push(str);
+        }
+    }
+
+    pendingMoves.forEach(m => {
+        if (isHorizontal) {
+            let minR = m.r, maxR = m.r;
+            while (minR > 0 && tempBoard[minR - 1][m.c]) minR--;
+            while (maxR < 14 && tempBoard[maxR + 1][m.c]) maxR++;
+            if (maxR - minR > 0) {
+                let str = "";
+                for (let r = minR; r <= maxR; r++) str += tempBoard[r][m.c].letter;
+                words.push(str);
+            }
+        } else {
+            let minC = m.c, maxC = m.c;
+            while (minC > 0 && tempBoard[m.r][minC - 1]) minC--;
+            while (maxC < 14 && tempBoard[m.r][maxC + 1]) maxC++;
+            if (maxC - minC > 0) {
+                let str = "";
+                for (let c = minC; c <= maxC; c++) str += tempBoard[m.r][c].letter;
+                words.push(str);
+            }
+        }
+    });
+
+    return words;
+}
+
+// 🤖 AI ENGINE LOGIC
+let localGameState = null;
+
+function startAiGame() {
+    isAiGame = true;
+    myPlayerIndex = 0;
+    maxPlayers = 2;
+    maxTurnTime = parseInt(document.getElementById('timerSelect').value);
+
+    document.getElementById('roomCodeDisplay').style.display = 'none';
+
+    let bag = generateInitialBag();
+    myRack = bag.splice(0, 7);
+    aiRack = bag.splice(0, 7);
+
+    localGameState = {
+        maxPlayers: 2,
+        turnIndex: 0,
+        status: 'active',
+        tileBag: bag,
+        board: JSON.stringify(boardState),
+        players: {
+            0: { id: 'p0', name: 'You', score: 0, rack: myRack },
+            1: { id: 'p1', name: 'AI Bot 🤖', score: 0, rack: aiRack }
+        }
+    };
+
+    document.getElementById('lobbySection').style.display = 'none';
+    document.getElementById('scoreboardView').style.display = 'grid';
+    document.getElementById('gameSection').style.display = 'block';
+
+    updateAiUi();
+}
+
+function updateAiUi() {
+    currentTurnIndex = localGameState.turnIndex;
+    boardState = JSON.parse(localGameState.board);
+
+    const sb = document.getElementById('scoreboardView');
+    sb.innerHTML = '';
+    Object.keys(localGameState.players).forEach(idx => {
+        const p = localGameState.players[idx];
+        const node = document.createElement('div');
+        node.className = `score-node ${parseInt(idx) === currentTurnIndex ? 'active-turn' : ''}`;
+        node.innerHTML = `<p>${p.name}</p><h3>${p.score}</h3>`;
+        sb.appendChild(node);
+    });
+
+    const turnBanner = document.getElementById('turnIndicator');
+    if (currentTurnIndex === 0) {
+        turnBanner.innerText = "YOUR TURN: PLACE TILES ON BOARD";
+        turnBanner.className = "turn-banner my-turn";
+        startTurnTimer();
+    } else {
+        clearInterval(turnTimerInterval);
+        document.getElementById('timerDisplay').innerText = "⏱️ AI Bot Thinking...";
+        turnBanner.innerText = "AI BOT IS THINKING... 🧠";
+        turnBanner.className = "turn-banner waiting-turn";
+        setTimeout(triggerAiMove, 1000);
+    }
+
+    renderRackUI(); renderBoardUI();
+}
+
+function triggerAiMove() {
+    let placed = false;
+
+    for (let word of DICTIONARY_WORDS) {
+        if (word.length > 7) continue;
+
+        let tempRack = [...aiRack];
+        let canForm = true;
+
+        for (let char of word) {
+            let idx = tempRack.indexOf(char);
+            if (idx !== -1) tempRack.splice(idx, 1);
+            else { canForm = false; break; }
+        }
+
+        if (canForm) {
+            let r = 7;
+            let startC = 7 - Math.floor(word.length / 2);
+
+            let clear = true;
+            for (let i = 0; i < word.length; i++) {
+                if (boardState[r][startC + i] !== null) clear = false;
+            }
+
+            if (clear) {
+                let aiScore = 0;
+                for (let i = 0; i < word.length; i++) {
+                    let char = word[i];
+                    boardState[r][startC + i] = { letter: char, isBlank: false };
+                    
+                    let idx = aiRack.indexOf(char);
+                    if (idx !== -1) aiRack.splice(idx, 1);
+
+                    aiScore += officialDistribution[char]?.val || 1;
+                }
+
+                while (aiRack.length < 7 && localGameState.tileBag.length > 0) {
+                    aiRack.push(localGameState.tileBag.pop());
+                }
+
+                localGameState.players[1].score += aiScore;
+                placed = true;
+                break;
+            }
+        }
+    }
+
+    if (!placed) localGameState.players[1].score += 0;
+
+    localGameState.board = JSON.stringify(boardState);
+    localGameState.turnIndex = 0;
+    playTone(600, 'sine', 0.15);
+    updateAiUi();
+}
+
+// 🌐 ONLINE MULTIPLAYER ENGINE
+function hostScrabbleSession() {
+    isAiGame = false;
+    maxPlayers = parseInt(document.getElementById('maxPlayersSelect').value);
+    maxTurnTime = parseInt(document.getElementById('timerSelect').value);
+    roomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    myPlayerIndex = 0;
+
+    // Display PIN code banner explicitly
+    document.getElementById('roomCodeText').innerText = roomCode;
+    document.getElementById('roomCodeDisplay').style.display = 'flex';
+
+    let initialBag = generateInitialBag();
+    myRack = initialBag.splice(0, 7);
+
+    let playersObj = {};
+    playersObj[0] = { id: 'p0', name: 'Player 1', score: 0, rack: myRack, passes: 0 };
+
+    sessionRef = database.ref('scrabble_rooms/' + roomCode);
+    sessionRef.set({
+        maxPlayers: maxPlayers,
+        turnIndex: 0,
+        status: 'waiting',
+        tileBag: initialBag,
+        board: JSON.stringify(boardState),
+        players: playersObj,
+        consecutivePasses: 0
+    }).then(() => runSystemCore());
+}
+
+function joinScrabbleSession() {
+    isAiGame = false;
+    maxTurnTime = parseInt(document.getElementById('timerSelect').value);
+    const code = document.getElementById('sessionCodeInput').value.trim();
+    if (code.length !== 4) return alert("Type a valid 4-digit room code!");
+
+    roomCode = code;
+    document.getElementById('roomCodeText').innerText = roomCode;
+    document.getElementById('roomCodeDisplay').style.display = 'flex';
+
+    sessionRef = database.ref('scrabble_rooms/' + roomCode);
+
+    sessionRef.once('value', (snap) => {
+        if(!snap.exists()) return alert("Room node does not exist!");
+        const data = snap.val();
+        
+        let existingPlayers = data.players ? Object.keys(data.players).length : 0;
+        if(existingPlayers >= data.maxPlayers) return alert("This room is full!");
+
+        myPlayerIndex = existingPlayers;
+        let bag = data.tileBag || [];
+        myRack = bag.splice(0, 7);
+
+        let updateData = {};
+        updateData[`players/${myPlayerIndex}`] = { 
+            id: `p${myPlayerIndex}`, 
+            name: `Player ${myPlayerIndex + 1}`, 
+            score: 0, 
+            rack: myRack,
+            passes: 0
+        };
+        updateData['tileBag'] = bag;
+
+        if(existingPlayers + 1 === data.maxPlayers) updateData['status'] = 'active';
+
+        sessionRef.update(updateData).then(() => runSystemCore());
+    });
+}
+
+function runSystemCore() {
+    document.getElementById('lobbySection').style.display = 'none';
+    document.getElementById('scoreboardView').style.display = 'grid';
+    document.getElementById('gameSection').style.display = 'block';
+
+    sessionRef.on('value', (snap) => {
+        const data = snap.val();
+        if(!data) return;
+
+        maxPlayers = data.maxPlayers || 2;
+        currentTurnIndex = data.turnIndex || 0;
+        if(data.board) boardState = JSON.parse(data.board);
+
+        const sb = document.getElementById('scoreboardView');
+        sb.innerHTML = '';
+        if(data.players) {
+            Object.keys(data.players).forEach(idx => {
+                const p = data.players[idx];
+                const node = document.createElement('div');
+                node.className = `score-node ${parseInt(idx) === currentTurnIndex ? 'active-turn' : ''}`;
+                node.innerHTML = `<p>${p.name}</p><h3>${p.score}</h3>`;
+                sb.appendChild(node);
+            });
+        }
+
+        const turnBanner = document.getElementById('turnIndicator');
+        if (data.status === 'waiting') {
+            turnBanner.innerText = `WAITING FOR PLAYERS (${Object.keys(data.players).length}/${maxPlayers})...`;
+            turnBanner.className = "turn-banner waiting-turn";
+            return;
+        }
+
+        if (data.status === 'finished') {
+            clearInterval(turnTimerInterval);
+            turnBanner.innerText = "GAME OVER! ALL PLAYERS PASSED OR BAG EMPTIED.";
+            turnBanner.className = "turn-banner waiting-turn";
+            return;
+        }
+
+        if (currentTurnIndex === myPlayerIndex) {
+            turnBanner.innerText = "YOUR TURN: PLACE TILES ON BOARD";
+            turnBanner.className = "turn-banner my-turn";
+            startTurnTimer();
+        } else {
+            clearInterval(turnTimerInterval);
+            document.getElementById('timerDisplay').innerText = `⏱️ Player ${currentTurnIndex + 1}'s Turn`;
+            turnBanner.innerText = `PLAYER ${currentTurnIndex + 1}'S TURN...`;
+            turnBanner.className = "turn-banner waiting-turn";
+        }
+
+        renderRackUI(); renderBoardUI();
+    });
+}
+
+function submitTurnMove() {
+    if (pendingMoves.length === 0) return alert("Place at least one tile onto the board!");
+
+    const rows = new Set(pendingMoves.map(m => m.r));
+    const cols = new Set(pendingMoves.map(m => m.c));
+    if(rows.size > 1 && cols.size > 1) return alert("Tiles must be placed in a single straight line!");
+
+    const isBoardEmpty = boardState.every(row => row.every(cell => cell === null));
+    if (isBoardEmpty) {
+        const coversCenter = pendingMoves.some(m => m.r === 7 && m.c === 7);
+        if(!coversCenter) return alert("The first word placed must cover the center star square!");
+    }
+
+    // Dictionary Validation
+    const formedWords = extractFormedWords();
+    for (let word of formedWords) {
+        if (!DICTIONARY_SET.has(word)) {
+            return alert(`❌ "${word}" is not a valid word in the Scrabble dictionary!`);
+        }
+    }
+
+    let moveScore = 0;
+    let wordMultiplier = 1;
+
+    pendingMoves.forEach(m => {
+        let baseVal = m.isBlank ? 0 : officialDistribution[m.letter]?.val || 0;
+        const mult = boardMultipliers[m.r][m.c];
+
+        if (mult === 'DLS') baseVal *= 2;
+        if (mult === 'TLS') baseVal *= 3;
+        if (mult === 'DWS') wordMultiplier *= 2;
+        if (mult === 'TWS') wordMultiplier *= 3;
+
+        moveScore += baseVal;
+        boardState[m.r][m.c] = { letter: m.letter, isBlank: m.isBlank };
+    });
+
+    moveScore *= wordMultiplier;
+    if(pendingMoves.length === 7) moveScore += 50;
+
+    clearInterval(turnTimerInterval);
+
+    if (isAiGame) {
+        while(myRack.length < 7 && localGameState.tileBag.length > 0) {
+            myRack.push(localGameState.tileBag.pop());
+        }
+        localGameState.players[0].score += moveScore;
+        localGameState.board = JSON.stringify(boardState);
+        localGameState.turnIndex = 1;
+        pendingMoves = [];
+        playTone(880, 'sine', 0.15);
+        updateAiUi();
+    } else {
+        sessionRef.once('value', (snap) => {
+            const data = snap.val();
+            let bag = data.tileBag || [];
+
+            while(myRack.length < 7 && bag.length > 0) myRack.push(bag.pop());
+
+            const nextTurnIndex = (currentTurnIndex + 1) % maxPlayers;
+            let players = data.players;
+            players[myPlayerIndex].score += moveScore;
+            players[myPlayerIndex].rack = myRack;
+
+            sessionRef.update({
+                board: JSON.stringify(boardState),
+                tileBag: bag,
+                players: players,
+                turnIndex: nextTurnIndex,
+                consecutivePasses: 0
+            });
+
+            pendingMoves = [];
+            playTone(880, 'sine', 0.15);
+            renderRackUI(); renderBoardUI();
+        });
+    }
+}
+
+function passTurnAction() {
+    clearUnsubmittedTiles();
+    clearInterval(turnTimerInterval);
+
+    if (isAiGame) {
+        localGameState.turnIndex = 1;
+        updateAiUi();
+    } else {
+        sessionRef.once('value', (snap) => {
+            const data = snap.val();
+            const nextTurnIndex = (currentTurnIndex + 1) % maxPlayers;
+            let passes = (data.consecutivePasses || 0) + 1;
+            let status = data.status;
+
+            if (passes >= maxPlayers * 2) status = 'finished';
+
+            sessionRef.update({
+                turnIndex: nextTurnIndex,
+                consecutivePasses: passes,
+                status: status
+            });
+        });
+    }
+}
+
+function exchangeTilesAction() {
+    if(selectedRackIndex === null) return alert("Select a tile from your rack to swap!");
+    clearInterval(turnTimerInterval);
+
+    if (isAiGame) {
+        if(localGameState.tileBag.length < 7) return alert("Exchanging tiles requires at least 7 tiles remaining in the bag!");
+        const returnedChar = myRack.splice(selectedRackIndex, 1)[0];
+        localGameState.tileBag.push(returnedChar);
+        localGameState.tileBag.sort(() => Math.random() - 0.5);
+        myRack.push(localGameState.tileBag.pop());
+        selectedRackIndex = null;
+        localGameState.turnIndex = 1;
+        updateAiUi();
+    } else {
+        sessionRef.once('value', (snap) => {
+            const data = snap.val();
+            let bag = data.tileBag || [];
+
+            if(bag.length < 7) return alert("Exchanging tiles requires at least 7 tiles remaining in the bag!");
+
+            const returnedChar = myRack.splice(selectedRackIndex, 1)[0];
+            bag.push(returnedChar);
+            bag.sort(() => Math.random() - 0.5);
+
+            myRack.push(bag.pop());
+            selectedRackIndex = null;
+
+            let players = data.players;
+            players[myPlayerIndex].rack = myRack;
+
+            const nextTurnIndex = (currentTurnIndex + 1) % maxPlayers;
+
+            sessionRef.update({
+                tileBag: bag,
+                players: players,
+                turnIndex: nextTurnIndex
+            });
+
+            renderRackUI();
+        });
+    }
+}
+</script>
+</body>
+</html>
